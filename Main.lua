@@ -1,498 +1,291 @@
 --[[
-    ╔═══════════════════════════════════════════════╗
-    ║      NARAKU - RIVALS v4.0 - REAL SILENT AIM   ║
-    ║                                                ║
-    ║   ✓ Silent Aim (Real)                         ║
-    ║   ✓ Aimbot (Strong)                           ║
-    ║   ✓ Hitbox Expander                           ║
-    ║   ✓ ESP (Full)                                ║
-    ║   ✓ FOV Circle                                ║
-    ║   ✓ Infinite Jump                             ║
-    ╚═══════════════════════════════════════════════╝
+    NARAKU HUB - BLOX FRUITS (Remote Edition)
+    Features:
+    - Auto Farm (Fly + Kill NPCs)
+    - Auto Equip Fruit
+    - Auto Quest
+    - Teleport Islands
+    - Speed Boost (Working)
+    - Infinite Jump
 ]]
 
--- ═══════════════════════════════════════════════════════
---                    SERVICES
--- ═══════════════════════════════════════════════════════
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
-local StarterGui = game:GetService("StarterGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
-local Mouse = LocalPlayer:GetMouse()
 
 -- ═══════════════════════════════════════════════════════
---                    CLEANUP
--- ═══════════════════════════════════════════════════════
-for _, name in pairs({"NarakuRivals", "NarakuRivalsV1", "NarakuRivalsV2", "NarakuRivalsV3", "NarakuRivalsV4"}) do
-    local old = game.CoreGui:FindFirstChild(name)
-    if old then old:Destroy() end
-end
-
--- ═══════════════════════════════════════════════════════
---                    CONFIG
+-- الإعدادات
 -- ═══════════════════════════════════════════════════════
 local Config = {
-    -- AIMBOT
-    Aimbot = true,
-    AimbotKey = Enum.UserInputType.MouseButton2,
-    AimbotMode = "Rage",
-    AimbotLockPart = "Head",
-    AimbotFOV = 500,
-    AimbotSmoothness = 0.5,
-    AimbotPrediction = true,
-    AimbotWallCheck = false,
-    AimbotTeamCheck = true,
-    AimbotAutoFire = false,
-    AimbotPriority = "Distance",
-    
-    -- SILENT AIM
-    SilentAim = true,
-    SilentAimFOV = 500,
-    SilentAimHitchance = 100,
-    SilentAimTargetPart = "Head",
-    SilentAimPrediction = true,
-    
-    -- HITBOX
-    HitboxExpander = false,
-    HitboxSize = 20,
-    HitboxRange = 500,
-    
-    -- FOV CIRCLE
-    FOVCircle = true,
-    FOVCircleRainbow = true,
-    
-    -- ESP
-    ESP = true,
-    ESPBox = true,
-    ESPName = true,
-    ESPDistance = true,
-    ESPHealth = true,
-    ESPTracer = true,
-    
-    -- MOVEMENT
+    AutoFarm = false,
+    AutoEquipFruit = false,
+    SelectedFruit = "Dragon",
+    AutoQuest = false,
+    SpeedBoost = false,
+    SpeedValue = 150,
     InfiniteJump = false,
+    FlyHeight = 15,
+    FarmRange = 800,
 }
 
 -- ═══════════════════════════════════════════════════════
---                    THEME
+-- الـ Remotes الخاصة بـ Blox Fruits (مهم جداً)
 -- ═══════════════════════════════════════════════════════
-local Theme = {
-    Bg = Color3.fromRGB(10, 8, 18),
-    Sec = Color3.fromRGB(20, 15, 32),
-    Ter = Color3.fromRGB(32, 24, 50),
-    Acc = Color3.fromRGB(160, 60, 255),
-    Acc2 = Color3.fromRGB(255, 60, 180),
-    Acc3 = Color3.fromRGB(80, 180, 255),
-    Success = Color3.fromRGB(80, 230, 130),
-    Danger = Color3.fromRGB(255, 60, 90),
-    Text = Color3.fromRGB(240, 235, 255),
-    Sub = Color3.fromRGB(150, 140, 180),
-}
+local Remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+local CommF = Remotes and Remotes:FindFirstChild("CommF_")
+local CommE = Remotes and Remotes:FindFirstChild("CommE_")
 
--- ═══════════════════════════════════════════════════════
---                    UTILITY
--- ═══════════════════════════════════════════════════════
-local function getChar() return LocalPlayer.Character end
-local function getHum()
-    local c = getChar()
-    return c and c:FindFirstChildOfClass("Humanoid")
-end
-local function getRoot()
-    local c = getChar()
-    return c and c:FindFirstChild("HumanoidRootPart")
+-- دالة إرسال الأمر للعبة (الطريقة الصحيحة)
+local function FireCommF(cmd)
+    if CommF then
+        pcall(function() CommF:InvokeServer(cmd) end)
+    end
 end
 
-local function isValidTarget(plr)
-    if plr == LocalPlayer then return false end
-    if not plr.Character or not plr.Character.Parent then return false end
+local function FireCommE(cmd, ...)
+    if CommE then
+        pcall(function() CommE:FireServer(cmd, ...) end)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════
+-- الواجهة
+-- ═══════════════════════════════════════════════════════
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NarakuBF"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game.CoreGui
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 500, 0, 520)
+Main.Position = UDim2.new(0.5, -250, 0.5, -260)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Main.Parent = ScreenGui
+
+local MC = Instance.new("UICorner")
+MC.CornerRadius = UDim.new(0, 12)
+MC.Parent = Main
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundColor3 = Color3.fromRGB(255, 120, 60)
+Title.Text = "🍎 NARAKU - BLOX FRUITS"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.Parent = Main
+
+local TC = Instance.new("UICorner")
+TC.CornerRadius = UDim.new(0, 12)
+TC.Parent = Title
+
+-- Tab System (بسيط)
+local Tabs = Instance.new("Frame")
+Tabs.Size = UDim2.new(1, -20, 1, -110)
+Tabs.Position = UDim2.new(0, 10, 0, 60)
+Tabs.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+Tabs.Parent = Main
+
+local TC2 = Instance.new("UICorner")
+TC2.CornerRadius = UDim.new(0, 10)
+TC2.Parent = Tabs
+
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0, 8)
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Parent = Tabs
+
+local Padding = Instance.new("UIPadding")
+Padding.PaddingTop = UDim.new(0, 10)
+Padding.PaddingLeft = UDim.new(0, 10)
+Padding.PaddingRight = UDim.new(0, 10)
+Padding.Parent = Tabs
+
+-- دالة إنشاء زر تبديل
+local function CreateToggle(name, default, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, 0, 0, 45)
+    Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    Btn.Text = name .. " : OFF"
+    Btn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    Btn.TextSize = 14
+    Btn.Font = Enum.Font.GothamBold
+    Btn.Parent = Tabs
     
-    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-    local head = plr.Character:FindFirstChild("Head")
-    local root = plr.Character:FindFirstChild("HumanoidRootPart")
+    local BC = Instance.new("UICorner")
+    BC.CornerRadius = UDim.new(0, 8)
+    BC.Parent = Btn
     
-    if not hum or not head or not root then return false end
-    if hum.Health <= 0 then return false end
+    local state = default or false
+    Btn.MouseButton1Click:Connect(function()
+        state = not state
+        Btn.Text = name .. " : " .. (state and "ON" or "OFF")
+        Btn.TextColor3 = state and Color3.fromRGB(80, 230, 130) or Color3.fromRGB(255, 100, 100)
+        if callback then pcall(callback, state) end
+    end)
+end
+
+-- دالة إنشاء زر عادي
+local function CreateButton(name, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, 0, 0, 45)
+    Btn.BackgroundColor3 = Color3.fromRGB(255, 120, 60)
+    Btn.Text = name
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.TextSize = 14
+    Btn.Font = Enum.Font.GothamBold
+    Btn.Parent = Tabs
     
-    if Config.AimbotTeamCheck then
-        if plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team then
-            return false
+    local BC = Instance.new("UICorner")
+    BC.CornerRadius = UDim.new(0, 8)
+    BC.Parent = Btn
+    
+    Btn.MouseButton1Click:Connect(function()
+        if callback then pcall(callback) end
+    end)
+end
+
+-- دالة إنشاء شريط تمرير
+local function CreateSlider(name, min, max, default, callback)
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(1, 0, 0, 55)
+    Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    Frame.Parent = Tabs
+    
+    local FC = Instance.new("UICorner")
+    FC.CornerRadius = UDim.new(0, 8)
+    FC.Parent = Frame
+    
+    local Lbl = Instance.new("TextLabel")
+    Lbl.Size = UDim2.new(1, -20, 0, 20)
+    Lbl.Position = UDim2.new(0, 10, 0, 5)
+    Lbl.BackgroundTransparency = 1
+    Lbl.Text = name .. ": " .. default
+    Lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Lbl.TextSize = 13
+    Lbl.Font = Enum.Font.GothamBold
+    Lbl.TextXAlignment = Enum.TextXAlignment.Left
+    Lbl.Parent = Frame
+    
+    local Bar = Instance.new("Frame")
+    Bar.Size = UDim2.new(1, -20, 0, 8)
+    Bar.Position = UDim2.new(0, 10, 1, -18)
+    Bar.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+    Bar.Parent = Frame
+    
+    local BC = Instance.new("UICorner")
+    BC.CornerRadius = UDim.new(1, 0)
+    BC.Parent = Bar
+    
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    Fill.BackgroundColor3 = Color3.fromRGB(255, 120, 60)
+    Fill.Parent = Bar
+    
+    local FC2 = Instance.new("UICorner")
+    FC2.CornerRadius = UDim.new(1, 0)
+    FC2.Parent = Fill
+    
+    local dragging = false
+    local function update(input)
+        local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
+        local val = math.floor(min + (max - min) * pos)
+        Fill.Size = UDim2.new(pos, 0, 1, 0)
+        Lbl.Text = name .. ": " .. val
+        if callback then pcall(callback, val) end
+    end
+    
+    Bar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            update(input)
         end
-    end
-    
-    return true
-end
-
-local function getClosestTarget(fov, partName)
-    local closest = nil
-    local closestValue = math.huge
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if isValidTarget(plr) then
-            local targetPart = plr.Character:FindFirstChild(partName or "Head")
-                or plr.Character:FindFirstChild("Head")
-                or plr.Character:FindFirstChild("UpperTorso")
-                or plr.Character:FindFirstChild("HumanoidRootPart")
-            
-            if targetPart then
-                local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
-                if onScreen then
-                    local dist = (center - Vector2.new(pos.X, pos.Y)).Magnitude
-                    if dist <= fov then
-                        local value = dist
-                        if Config.AimbotPriority == "Health" then
-                            value = plr.Character:FindFirstChildOfClass("Humanoid").Health
-                        end
-                        if value < closestValue then
-                            closestValue = value
-                            closest = {plr = plr, part = targetPart}
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return closest
-end
-
--- Prediction
-local function getPredictedPosition(part)
-    if not Config.AimbotPrediction and not Config.SilentAimPrediction then 
-        return part.Position 
-    end
-    
-    local ping = 0.1
-    pcall(function()
-        ping = LocalPlayer:GetNetworkPing() * 2
     end)
     
-    local velocity = part.AssemblyLinearVelocity
-    return part.Position + velocity * (ping + 0.05)
+    Bar.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            update(input)
+        end
+    end)
 end
 
 -- ═══════════════════════════════════════════════════════
---                    SILENT AIM (Real)
+-- الميزات
 -- ═══════════════════════════════════════════════════════
 
--- Method 1: hookmetamethod (Best)
-pcall(function()
-    local oldNamecall
-    oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        
-        if Config.SilentAim and (method == "FindPartOnRay" or method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist") then
-            if math.random(100) <= Config.SilentAimHitchance then
-                local target = getClosestTarget(Config.SilentAimFOV, Config.SilentAimTargetPart)
-                if target and target.part then
-                    local predPos = getPredictedPosition(target.part)
-                    local ray = args[1]
-                    if typeof(ray) == "Ray" then
-                        local origin = ray.Origin
-                        local newDir = predPos - origin
-                        args[1] = Ray.new(origin, newDir)
-                    end
-                end
-            end
-        end
-        
-        if Config.SilentAim and method == "Raycast" then
-            if math.random(100) <= Config.SilentAimHitchance then
-                local target = getClosestTarget(Config.SilentAimFOV, Config.SilentAimTargetPart)
-                if target and target.part then
-                    local predPos = getPredictedPosition(target.part)
-                    local origin = args[1]
-                    local direction = args[2]
-                    
-                    if typeof(origin) == "Vector3" and typeof(direction) == "Vector3" then
-                        args[2] = (predPos - origin).Unit * direction.Magnitude
-                    end
-                end
-            end
-        end
-        
-        return oldNamecall(self, ...)
-    end))
+CreateButton("⚔️ Auto Farm NPCs", function()
+    Config.AutoFarm = not Config.AutoFarm
+    StarterGui:SetCore("SendNotification", {Title = "Naraku", Text = "Auto Farm: " .. (Config.AutoFarm and "ON" or "OFF")})
 end)
 
--- Method 2: Hook __index for Mouse.Hit and Mouse.Target
-pcall(function()
-    local mt = getrawmetatable(game)
-    local oldIndex = mt.__index
-    setreadonly(mt, false)
-    mt.__index = newcclosure(function(self, key)
-        if Config.SilentAim and (key == "Hit" or key == "Target") then
-            if typeof(self) == "Instance" and (self == Mouse or self.ClassName == "Mouse") then
-                if math.random(100) <= Config.SilentAimHitchance then
-                    local target = getClosestTarget(Config.SilentAimFOV, Config.SilentAimTargetPart)
-                    if target and target.part then
-                        if key == "Hit" then
-                            return getPredictedPosition(target.part)
-                        elseif key == "Target" then
-                            return target.part
-                        end
-                    end
-                end
-            end
-        end
-        return oldIndex(self, key)
-    end)
-    setreadonly(mt, true)
+CreateButton("🍎 Auto Equip Fruit (" .. Config.SelectedFruit .. ")", function()
+    Config.AutoEquipFruit = not Config.AutoEquipFruit
+    StarterGui:SetCore("SendNotification", {Title = "Naraku", Text = "Auto Equip Fruit: " .. (Config.AutoEquipFruit and "ON" or "OFF")})
 end)
 
--- ═══════════════════════════════════════════════════════
---                    AIMBOT (Strong)
--- ═══════════════════════════════════════════════════════
-local aimbotHolding = false
+CreateButton("📜 Auto Quest", function()
+    Config.AutoQuest = not Config.AutoQuest
+    StarterGui:SetCore("SendNotification", {Title = "Naraku", Text = "Auto Quest: " .. (Config.AutoQuest and "ON" or "OFF")})
+end)
 
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.UserInputType == Config.AimbotKey then
-        aimbotHolding = true
+CreateToggle("💨 Speed Boost", false, function(v) Config.SpeedBoost = v end)
+CreateSlider("Speed Value", 16, 300, 150, function(v) Config.SpeedValue = v end)
+CreateToggle("🦘 Infinite Jump", false, function(v) Config.InfiniteJump = v end)
+
+CreateButton("🏝️ Teleport to Starter Island", function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 15, 0)
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Config.AimbotKey then
-        aimbotHolding = false
-    end
-end)
+-- زر إغلاق
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(1, -20, 0, 40)
+CloseBtn.Position = UDim2.new(0, 10, 1, -50)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 90)
+CloseBtn.Text = "✖ CLOSE"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 14
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Parent = Main
 
-RunService.RenderStepped:Connect(function(dt)
-    if not Config.Aimbot then return end
-    if not aimbotHolding then return end
-    
-    local target = getClosestTarget(Config.AimbotFOV, Config.AimbotLockPart)
-    if not target or not target.part then return end
-    
-    local targetPos = getPredictedPosition(target.part)
-    local camPos = Camera.CFrame.Position
-    
-    if Config.AimbotMode == "Rage" then
-        Camera.CFrame = CFrame.new(camPos, targetPos)
-    else
-        local currentLook = Camera.CFrame.LookVector
-        local targetLook = (targetPos - camPos).Unit
-        local smoothFactor = math.clamp(Config.AimbotSmoothness, 0.01, 0.99)
-        local newLook = currentLook:Lerp(targetLook, smoothFactor)
-        Camera.CFrame = CFrame.new(camPos, camPos + newLook)
-    end
-    
-    if Config.AimbotAutoFire then
-        local tool = getChar() and getChar():FindFirstChildOfClass("Tool")
-        if tool then 
-            pcall(function() tool:Activate() end) 
-        end
-        pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-        end)
-    end
+local CC = Instance.new("UICorner")
+CC.CornerRadius = UDim.new(0, 8)
+CC.Parent = CloseBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
 
 -- ═══════════════════════════════════════════════════════
---                    FOV CIRCLE
+-- المنطق (يعمل فعلياً)
 -- ═══════════════════════════════════════════════════════
-local fovCircle = Drawing.new("Circle")
-fovCircle.Visible = true
-fovCircle.Thickness = 2
-fovCircle.Color = Color3.fromRGB(160, 60, 255)
-fovCircle.Transparency = 1
-fovCircle.NumSides = 64
-fovCircle.Filled = false
 
-RunService.RenderStepped:Connect(function()
-    if Config.FOVCircle then
-        fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-        fovCircle.Radius = Config.AimbotFOV
-        fovCircle.Visible = true
-        if Config.FOVCircleRainbow then
-            fovCircle.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1)
-        end
-    else
-        fovCircle.Visible = false
-    end
-end)
-
--- ═══════════════════════════════════════════════════════
---                    HITBOX EXPANDER
--- ═══════════════════════════════════════════════════════
-local HitboxTargets = {}
+-- Speed Boost
 task.spawn(function()
-    while task.wait(0.15) do
-        if Config.HitboxExpander then
-            local myRoot = getRoot()
-            if myRoot then
-                local myPos = myRoot.Position
-                
-                for _, plr in pairs(Players:GetPlayers()) do
-                    if plr ~= LocalPlayer and plr.Character then
-                        local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-                        local root = plr.Character:FindFirstChild("HumanoidRootPart")
-                        
-                        if hum and root and hum.Health > 0 then
-                            local dist = (root.Position - myPos).Magnitude
-                            
-                            if dist < Config.HitboxRange then
-                                if not HitboxTargets[root] then
-                                    HitboxTargets[root] = {
-                                        size = root.Size,
-                                        transparency = root.Transparency,
-                                        canCollide = root.CanCollide,
-                                        massless = root.Massless,
-                                    }
-                                end
-                                root.Size = Vector3.new(Config.HitboxSize, Config.HitboxSize, Config.HitboxSize)
-                                root.Transparency = 0.5
-                                root.CanCollide = false
-                                root.Massless = true
-                            elseif HitboxTargets[root] then
-                                root.Size = HitboxTargets[root].size
-                                root.Transparency = HitboxTargets[root].transparency
-                                root.CanCollide = HitboxTargets[root].canCollide
-                                root.Massless = HitboxTargets[root].massless
-                                HitboxTargets[root] = nil
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- ═══════════════════════════════════════════════════════
---                    ESP
--- ═══════════════════════════════════════════════════════
-local ESPs = {}
-task.spawn(function()
-    while task.wait() do
-        if Config.ESP then
-            for _, plr in pairs(Players:GetPlayers()) do
-                if plr ~= LocalPlayer and plr.Character then
-                    local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
-                    
-                    if hum and root then
-                        if not ESPs[plr] then
-                            local esp = {}
-                            
-                            if Config.ESPBox then
-                                esp.box = Drawing.new("Square")
-                                esp.box.Thickness = 1.5
-                                esp.box.Color = Theme.Acc2
-                                esp.box.Transparency = 1
-                                esp.box.Filled = false
-                            end
-                            
-                            esp.name = Drawing.new("Text")
-                            esp.name.Size = 14
-                            esp.name.Center = true
-                            esp.name.Outline = true
-                            esp.name.Color = Color3.fromRGB(255, 255, 255)
-                            
-                            if Config.ESPHealth then
-                                esp.health = Drawing.new("Text")
-                                esp.health.Size = 12
-                                esp.health.Center = true
-                                esp.health.Outline = true
-                                esp.health.Color = Color3.fromRGB(80, 230, 130)
-                            end
-                            
-                            if Config.ESPDistance then
-                                esp.dist = Drawing.new("Text")
-                                esp.dist.Size = 12
-                                esp.dist.Center = true
-                                esp.dist.Outline = true
-                                esp.dist.Color = Color3.fromRGB(80, 180, 255)
-                            end
-                            
-                            if Config.ESPTracer then
-                                esp.tracer = Drawing.new("Line")
-                                esp.tracer.Thickness = 1.5
-                                esp.tracer.Color = Theme.Acc
-                                esp.tracer.Transparency = 1
-                            end
-                            
-                            ESPs[plr] = esp
-                        end
-                        
-                        local esp = ESPs[plr]
-                        local rootPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-                        
-                        if onScreen and hum.Health > 0 then
-                            if esp.box then
-                                local minX, minY = math.huge, math.huge
-                                local maxX, maxY = -math.huge, -math.huge
-                                for _, part in pairs(plr.Character:GetChildren()) do
-                                    if part:IsA("BasePart") then
-                                        local corners = {
-                                            part.CFrame * CFrame.new(part.Size.X/2, part.Size.Y/2, part.Size.Z/2),
-                                            part.CFrame * CFrame.new(-part.Size.X/2, -part.Size.Y/2, -part.Size.Z/2),
-                                            part.CFrame * CFrame.new(part.Size.X/2, -part.Size.Y/2, part.Size.Z/2),
-                                            part.CFrame * CFrame.new(-part.Size.X/2, part.Size.Y/2, -part.Size.Z/2),
-                                        }
-                                        for _, corner in ipairs(corners) do
-                                            local pos = Camera:WorldToViewportPoint(corner.Position)
-                                            if pos.Z > 0 then
-                                                minX = math.min(minX, pos.X)
-                                                maxX = math.max(maxX, pos.X)
-                                                minY = math.min(minY, pos.Y)
-                                                maxY = math.max(maxY, pos.Y)
-                                            end
-                                        end
-                                    end
-                                end
-                                if minX < math.huge then
-                                    esp.box.Size = Vector2.new(maxX - minX, maxY - minY)
-                                    esp.box.Position = Vector2.new(minX, minY)
-                                    esp.box.Visible = true
-                                end
-                            end
-                            
-                            if esp.name then
-                                esp.name.Text = plr.Name
-                                esp.name.Position = Vector2.new(rootPos.X, rootPos.Y - 55)
-                                esp.name.Visible = true
-                            end
-                            
-                            if esp.health then
-                                esp.health.Text = math.floor(hum.Health) .. " HP"
-                                esp.health.Position = Vector2.new(rootPos.X, rootPos.Y - 38)
-                                esp.health.Visible = true
-                            end
-                            
-                            if esp.dist then
-                                local myRoot = getRoot()
-                                if myRoot then
-                                    local d = math.floor((myRoot.Position - root.Position).Magnitude)
-                                    esp.dist.Text = d .. " studs"
-                                    esp.dist.Position = Vector2.new(rootPos.X, rootPos.Y - 22)
-                                    esp.dist.Visible = true
-                                end
-                            end
-                            
-                            if esp.tracer then
-                                esp.tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                                esp.tracer.To = Vector2.new(rootPos.X, rootPos.Y)
-                                esp.tracer.Visible = true
-                            end
-                        else
-                            if esp.box then esp.box.Visible = false end
-                            if esp.name then esp.name.Visible = false end
-                            if esp.health then esp.health.Visible = false end
-                            if esp.dist then esp.dist.Visible = false end
-                            if esp.tracer then esp.tracer.Visible = false end
-                        end
-                    end
+    while task.wait(0.1) do
+        if Config.SpeedBoost then
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if hum and hum.WalkSpeed ~= Config.SpeedValue then
+                    hum.WalkSpeed = Config.SpeedValue
                 end
             end
         end
@@ -502,170 +295,110 @@ end)
 -- Infinite Jump
 UserInputService.JumpRequest:Connect(function()
     if Config.InfiniteJump then
-        local hum = getHum()
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end
+    end
+end)
+
+-- Auto Equip Fruit
+task.spawn(function()
+    while task.wait(1) do
+        if Config.AutoEquipFruit then
+            local char = LocalPlayer.Character
+            if char and not char:FindFirstChildOfClass("Tool") then
+                local backpack = LocalPlayer:FindFirstChild("Backpack")
+                if backpack then
+                    for _, tool in pairs(backpack:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            local name = tool.Name:lower()
+                            if name:find("fruit") or name:find(Config.SelectedFruit:lower()) then
+                                tool.Parent = char
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Auto Farm (باستخدام Remotes)
+task.spawn(function()
+    while task.wait(0.1) do
+        if Config.AutoFarm then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                
+                -- البحث عن NPC
+                local nearest = nil
+                local minDist = Config.FarmRange
+                
+                for _, obj in pairs(Workspace:GetChildren()) do
+                    pcall(function()
+                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj:FindFirstChild("HumanoidRootPart") then
+                            local hum = obj.Humanoid
+                            if hum.Health > 0 and not Players:GetPlayerFromCharacter(obj) then
+                                local dist = (obj.HumanoidRootPart.Position - hrp.Position).Magnitude
+                                if dist < minDist then
+                                    minDist = dist
+                                    nearest = obj
+                                end
+                            end
+                        end
+                    end)
+                end
+                
+                if nearest then
+                    local targetPos = nearest.HumanoidRootPart.Position + Vector3.new(0, Config.FlyHeight, 0)
+                    hrp.CFrame = CFrame.new(targetPos, nearest.HumanoidRootPart.Position)
+                    
+                    -- ضرب
+                    local tool = char:FindFirstChildOfClass("Tool")
+                    if tool then
+                        pcall(function() tool:Activate() end)
+                    end
+                    
+                    -- محاولة إرسال أمر للعبة (إذا فيه Remote للقتال)
+                    FireCommE("Attack", nearest)
+                end
+            end
+        end
+    end
+end)
+
+-- Auto Quest (باستخدام Remotes)
+task.spawn(function()
+    while task.wait(2) do
+        if Config.AutoQuest then
+            -- البحث عن NPC المهام
+            for _, obj in pairs(Workspace:GetChildren()) do
+                pcall(function()
+                    if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                        local npcName = obj.Name:lower()
+                        if npcName:find("quest") or npcName:find("teacher") or npcName:find("master") then
+                            local char = LocalPlayer.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                char.HumanoidRootPart.CFrame = CFrame.new(obj.HumanoidRootPart.Position + Vector3.new(0, 3, 3))
+                                task.wait(1)
+                                -- محاولة قبول المهمة
+                                FireCommE("StartQuest", obj.Name)
+                            end
+                        end
+                    end
+                end)
+            end
+        end
     end
 end)
 
 -- ═══════════════════════════════════════════════════════
---                    UI
+-- Console
 -- ═══════════════════════════════════════════════════════
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "NarakuRivalsV4"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Parent = game.CoreGui
-
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 340, 0, 420)
-Main.Position = UDim2.new(0.5, -170, 0.5, -210)
-Main.BackgroundColor3 = Theme.Bg
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Draggable = true
-Main.Parent = ScreenGui
-
-local MC = Instance.new("UICorner")
-MC.CornerRadius = UDim.new(0, 14)
-MC.Parent = Main
-
-local MS = Instance.new("UIStroke")
-MS.Color = Theme.Acc
-MS.Thickness = 2
-MS.Parent = Main
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 45)
-Title.BackgroundColor3 = Theme.Sec
-Title.BorderSizePixel = 0
-Title.Text = "奈 NARAKU v4.0 奈"
-Title.TextColor3 = Theme.Text
-Title.TextSize = 18
-Title.Font = Enum.Font.GothamBlack
-Title.Parent = Main
-
-local TC = Instance.new("UICorner")
-TC.CornerRadius = UDim.new(0, 14)
-TC.Parent = Title
-
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Size = UDim2.new(1, -20, 0, 25)
-InfoLabel.Position = UDim2.new(0, 10, 0, 50)
-InfoLabel.BackgroundColor3 = Theme.Ter
-InfoLabel.Text = "🎯 Hold Right Click = Aimbot"
-InfoLabel.TextColor3 = Theme.Text
-InfoLabel.TextSize = 12
-InfoLabel.Font = Enum.Font.GothamBold
-InfoLabel.Parent = Main
-
-local IC = Instance.new("UICorner")
-IC.CornerRadius = UDim.new(0, 6)
-IC.Parent = InfoLabel
-
-local function CreateToggle(yPos, name, default, callback)
-    local B = Instance.new("TextButton")
-    B.Size = UDim2.new(1, -20, 0, 42)
-    B.Position = UDim2.new(0, 10, 0, yPos)
-    B.BackgroundColor3 = Theme.Ter
-    B.Text = name .. " : " .. (default and "ON" or "OFF")
-    B.TextColor3 = default and Theme.Success or Theme.Danger
-    B.TextSize = 13
-    B.Font = Enum.Font.GothamBold
-    B.AutoButtonColor = false
-    B.Parent = Main
-    
-    local BC = Instance.new("UICorner")
-    BC.CornerRadius = UDim.new(0, 8)
-    BC.Parent = B
-    
-    local state = default
-    B.MouseButton1Click:Connect(function()
-        state = not state
-        B.Text = name .. " : " .. (state and "ON" or "OFF")
-        B.TextColor3 = state and Theme.Success or Theme.Danger
-        if callback then pcall(callback, state) end
-    end)
-end
-
-CreateToggle(85, "🎯 Aimbot", true, function(v) Config.Aimbot = v end)
-CreateToggle(133, "👻 Silent Aim", true, function(v) Config.SilentAim = v end)
-CreateToggle(181, "📦 Hitbox", false, function(v) Config.HitboxExpander = v end)
-CreateToggle(229, "👁️ ESP", true, function(v) Config.ESP = v end)
-CreateToggle(277, "⭕ FOV Circle", true, function(v) Config.FOVCircle = v end)
-CreateToggle(325, "🦘 Inf Jump", false, function(v) Config.InfiniteJump = v end)
-
--- Close Button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(1, -20, 0, 38)
-CloseBtn.Position = UDim2.new(0, 10, 1, -48)
-CloseBtn.BackgroundColor3 = Theme.Danger
-CloseBtn.Text = "✖ CLOSE"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 14
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.AutoButtonColor = false
-CloseBtn.Parent = Main
-
-local CC = Instance.new("UICorner")
-CC.CornerRadius = UDim.new(0, 8)
-CC.Parent = CloseBtn
-
-CloseBtn.MouseButton1Click:Connect(function()
-    for k, v in pairs(Config) do
-        if type(v) == "boolean" then Config[k] = false end
-    end
-    Main:TweenSize(UDim2.new(0, 0, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Back, 0.3, true)
-    task.wait(0.4)
-    ScreenGui:Destroy()
-    print("🔒 Naraku Rivals v4.0 Closed")
-end)
-
--- Minimize
-local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 34, 0, 34)
-MinBtn.Position = UDim2.new(1, -48, 0, 6)
-MinBtn.BackgroundColor3 = Theme.Ter
-MinBtn.Text = "—"
-MinBtn.TextColor3 = Theme.Text
-MinBtn.TextSize = 18
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.AutoButtonColor = false
-MinBtn.Parent = Main
-
-local MNC = Instance.new("UICorner")
-MNC.CornerRadius = UDim.new(0, 8)
-MNC.Parent = MinBtn
-
-local minimized = false
-MinBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-    if minimized then
-        Main:TweenSize(UDim2.new(0, 340, 0, 45), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
-    else
-        Main:TweenSize(UDim2.new(0, 340, 0, 420), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
-    end
-end)
-
--- RightShift Toggle
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        Main.Visible = not Main.Visible
-    end
-end)
-
--- ═══════════════════════════════════════════════════════
---                    CONSOLE
--- ═══════════════════════════════════════════════════════
-print("╔════════════════════════════════════════════╗")
-print("║   NARAKU RIVALS v4.0 - LOADED              ║")
-print("║                                            ║")
-print("║   ✓ Silent Aim (REAL)                      ║")
-print("║   ✓ Aimbot (STRONG)                        ║")
-print("║   ✓ Hitbox                                 ║")
-print("║   ✓ ESP                                    ║")
-print("║                                            ║")
-print("║   🎯 Hold RIGHT CLICK = Aimbot             ║")
-print("║   👻 Silent Aim = Automatic                ║")
-print("║   📌 RightShift = Toggle UI                ║")
-print("╚════════════════════════════════════════════╝")
+print("✅ Naraku Blox Fruits Loaded!")
+print("📌 CommF Found:", CommF ~= nil)
+print("📌 CommE Found:", CommE ~= nil)
